@@ -37,6 +37,30 @@ sed -i "s/#//" /etc/apk/repositories
 sed -i "s/^http:/https:/g" /etc/apk/repositories
 apk update
 
+# enable automatic updates
+if [ "$(apk list --installed | grep apk-autoupdate | wc -l)" -eq 0 ]; then
+  echo "Enabling automatic updates..."
+  apk add apk-autoupdate --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
+  cat >>/etc/apk/autoupdate.conf <<EOF
+
+after_upgrade() {
+  for pkg in \$@; do
+    case \$pkg in
+      linux-*) reboot;;
+    esac
+  done
+}
+EOF
+
+  cat >/etc/periodic/daily/apk-autoupdate.sh <<EOF
+#!/bin/sh
+set -eu
+apk-autoupdate
+EOF
+
+  chmod 700 /etc/periodic/daily/apk-autoupdate.sh
+fi
+
 # install tinyssh
 if [ "$(apk list --installed | grep tinyssh | wc -l)" -eq 0 ]; then
   echo "Installing tinyssh..."
@@ -53,7 +77,7 @@ fi
 # disable IPv6
 echo 1 >/proc/sys/net/ipv6/conf/all/disable_ipv6
 
-# install endwall
+# install Endwall
 if [ ! -f /usr/local/bin/endwall ]; then
   echo "Installing endwall..."
   apk del iptables ip6tables
