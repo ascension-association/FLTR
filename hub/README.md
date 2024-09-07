@@ -7,7 +7,7 @@ Centralized instance for managing the FLTR nodes, aggregating logs, and communic
 1. Purchase a domain name
 2. On a secure device, generate your own Ed25519 SSH key pair: `ssh-keygen -t ed25519`
 3. Create an Alpine Linux compute instance with a static public IPv4 address
-4. If you're running within a container or virtual cloud network, expose or add ingress rules for ports 22, 80, and 443
+4. If you're running within a container or virtual cloud network, expose or add ingress rules for TCP ports 22, 80, and 443
 5. Create a DNS A record pointing your static public IPv4 address to your domain or a new subdomain (may take up to a day to propagate)
 
 ### Installation
