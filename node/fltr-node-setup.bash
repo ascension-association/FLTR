@@ -113,7 +113,7 @@ blocking:
     custom:
       - |
         # inline definition with YAML literal block scalar style
-        baddomain.org
+        example.net
         tor.bravesoftware.com
         odoh.cloudflare-dns.com
         odoh1.surfdomeinen.nl

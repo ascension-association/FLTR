@@ -17,4 +17,4 @@ Internet exit node for end user devices
 3. Download the `fltr-node-setup.bash` and `fltr-node-setup.conf.template` files
 4. Rename the `fltr-node-setup.conf.template` file to `fltr-node-setup.conf` and edit with your values
 5. Run `bash fltr-node-setup.bash`
-6. Connect to the exit node using a Tailscale client and try to browse to `baddomain.org` (should be blocked)
+6. Connect to the exit node using a Tailscale client and try to browse to `example.net` (should be blocked, whereas `example.com` should load)
