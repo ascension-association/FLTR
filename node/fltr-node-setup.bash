@@ -47,7 +47,7 @@ fi
 # disable IPv6
 echo 1 >/proc/sys/net/ipv6/conf/all/disable_ipv6
 
-# install Endwall
+# install and run Endwall
 if [ ! -f /usr/local/bin/endwall ]; then
   echo "Installing endwall..."
   apk del iptables ip6tables
@@ -68,15 +68,17 @@ sysctl -p /etc/sysctl.d/99-tailscale.conf
 apk add ethtool
 apk add tailscale --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
 
+# optimize Tailscale
 rc-update add local default
 cat >/etc/local.d/tailscale.start <<EOF
 #!/bin/sh
-NETDEV=\$(ip route show 0/0 | cut -f5 -d" " | head -n1)
-ethtool -K \${NETDEV} rx-udp-gro-forwarding on rx-gro-list off
+ulimit -n 65535
+ethtool -K $(ip route show 0/0 | cut -f5 -d" " | head -n1) rx-udp-gro-forwarding on rx-gro-list off
 EOF
 
 chmod u+wrx /etc/local.d/tailscale.start
 
+# run Tailscale
 rc-update add tailscale
 rc-service tailscale start
 tailscale up --advertise-exit-node --login-server=https://${HUB_DOMAIN_NAME}:443 --authkey ${TAILSCALE_AUTH_KEY}
@@ -142,7 +144,51 @@ ports:
   dns: 53
 EOF
 
+# run Blocky
 rc-update add blocky
 rc-service blocky start
 tailscale set --accept-dns=false
 echo "nameserver 127.0.0.1" >/etc/resolv.conf
+
+# compile and install Zeek
+apk add g++ cmake make openssl-dev libpcap-dev git python3-dev bison flex-dev musl-fts-dev linux-headers zlib-dev swig bash geoip-dev libmaxminddb-dev
+cd /tmp
+git clone --recursive https://github.com/zeek/zeek.git
+cd zeek
+./configure --prefix=/usr/local/zeek
+make
+make install
+cat >/etc/node.cfg <<EOF
+[zeek]
+type=standalone
+host=localhost
+interface=$(ip route show 0/0 | cut -f5 -d" " | head -n1)
+EOF
+
+# install and load json-streaming-logs
+echo y | /usr/local/zeek/bin/zkg autoconfig
+sed -i "s/# @load packages/@load packages/" /usr/local/zeek/share/zeek/site/local.zeek
+echo "SitePluginPath = $(/usr/local/zeek/bin/zkg config plugin_dir)" >>/usr/local/zeek/etc/zeekctl.cfg
+apk add py3-gitpython py3-semantic-version --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+echo y | /usr/local/zeek/bin/zkg install json-streaming-logs
+/usr/local/zeek/bin/zkg load json-streaming-logs
+/usr/local/zeek/bin/zeekctl deploy
+
+# run Zeek when Tailscale runs
+/usr/local/zeek/bin/zeekctl start
+echo "/usr/local/zeek/bin/zeekctl start" >>/etc/local.d/tailscale.start
+
+# install Vector
+apk add librdkafka zlib-ng --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
+apk add vector --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
+mkdir -p /var/lib/vector
+
+# install LogSlash
+apk add git
+cd /tmp
+git clone https://github.com/ascension-association/LogSlash
+cp ./LogSlash/Vector/logslash-zeek_*.toml /etc/vector/
+test -f /etc/vector/vector.yaml && rm /etc/vector/vector.yaml
+
+# TODO: run Vector as service (default apk version doesn't support configuration parameters)
+/usr/bin/vector -C /etc/vector
