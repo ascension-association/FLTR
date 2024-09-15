@@ -171,6 +171,7 @@ sed -i "s/# @load packages/@load packages/" /usr/local/zeek/share/zeek/site/loca
 echo "SitePluginPath = $(/usr/local/zeek/bin/zkg config plugin_dir)" >>/usr/local/zeek/etc/zeekctl.cfg
 apk add py3-gitpython py3-semantic-version --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
 echo y | /usr/local/zeek/bin/zkg install json-streaming-logs
+sed -i "s/disable_default_logs = F/disable_default_logs = T/" /usr/local/zeek/share/zeek/site/packages/json-streaming-logs/main.zeek
 /usr/local/zeek/bin/zkg load json-streaming-logs
 /usr/local/zeek/bin/zeekctl deploy
 
