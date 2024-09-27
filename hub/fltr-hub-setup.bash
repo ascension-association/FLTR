@@ -86,8 +86,7 @@ if [ ! -f /usr/local/bin/endwall ]; then
   rc-service nftables start
   curl -sLo /usr/local/bin/endwall https://raw.githubusercontent.com/ascension-association/endwall/master/endwall_nft_alpine.sh
   sed -i "s/#server_in tcp 22/server_in tcp 22/" /usr/local/bin/endwall
-  sed -i "s/#server_in_x tcp 80,443/server_in_x tcp 80,443/" /usr/local/bin/endwall
-  sed -i "s/#server_in_x tcp 80,443/server_in_x tcp 80,443/" /usr/local/bin/endwall
+  sed -i "s/#server_in_x tcp 80,443/server_in_x tcp 80,443,8080,8443/" /usr/local/bin/endwall
   chmod u+wrx /usr/local/bin/endwall
   /usr/local/bin/endwall
 fi
@@ -96,8 +95,8 @@ fi
 apk add headscale --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
 echo '{"acls":[{"action":"accept","src":["*"],"dst":["*:*"]}]}' >/etc/headscale/acl.hujson
 chmod 644 /etc/headscale/acl.hujson
-sed -i "s/^server_url.*$/server_url: https:\/\/${DOMAIN_NAME}:443/" /etc/headscale/config.yaml
-sed -i "s/^listen_addr.*$/listen_addr: 0.0.0.0:443/" /etc/headscale/config.yaml
+sed -i "s/^server_url.*$/server_url: https:\/\/${DOMAIN_NAME}:8443/" /etc/headscale/config.yaml
+sed -i "s/^listen_addr.*$/listen_addr: 0.0.0.0:8443/" /etc/headscale/config.yaml
 sed -i "s/^acme_email.*$/acme_email: \"${ACME_EMAIL}\"/" /etc/headscale/config.yaml
 sed -i "s/^tls_letsencrypt_hostname.*$/tls_letsencrypt_hostname: \"${DOMAIN_NAME}\"/" /etc/headscale/config.yaml
 sed -i "s/^acl_policy_path.*$/acl_policy_path: \"\/etc\/headscale\/acl.hujson\"/" /etc/headscale/config.yaml
@@ -106,9 +105,53 @@ sed -i "s/magic_dns: true/magic_dns: false/" /etc/headscale/config.yaml
 sed -i "s/override_local_dns: false/override_local_dns: true/" /etc/headscale/config.yaml
 sed -i "s/^    - 1\.1\.1\.1.*$/    - 104.197.28.121/" /etc/headscale/config.yaml
 sed -i "/104\.197\.28\.121/a \    \- 104.155.237.225" /etc/headscale/config.yaml
-# need to run as root due to privileged 443 port
 sed -i "s/^command_user=.*/command_user=\"root:root\"/" /etc/init.d/headscale
 rc-update add headscale
 rc-service headscale start
+
+# install and configure Emitter
+apk add git go gcc musl-dev
+cd /tmp
+git clone https://github.com/emitter-io/emitter
+cd emitter
+sed -i "s/:80/:8080/g" ./internal/broker/service.go
+go get -x .
+go build -x .
+mv emitter /usr/local/bin
+mkdir -p /root/emitter-storage/db
+chmod 700 /root/emitter-storage/db
+chmod 700 /root/emitter-storage
+cd /root/emitter-storage
+emitter license new >/root/emitter-storage/license 2>&1
+chmod 400 license
+cat >/root/emitter-storage/emitter.conf <<EOF
+{
+  "license": "$(grep 'license:' /root/emitter-storage/license | rev | cut -d' ' -f1 | rev)",
+  "limit": {},
+  "tls": {
+    "listen": ":443",
+    "host": "${DOMAIN_NAME}"
+  },
+  "storage": {
+    "provider": "ssd",
+    "config": {
+      "dir": "/root/emitter-storage/db"
+    }
+  }
+}
+EOF
+
+chmod 600 /root/emitter-storage/emitter.conf
+screen -d -m /usr/local/bin/emitter -c=/root/emitter-storage/emitter.conf
+
+# run Emitter at startup
+apk add screen
+rc-update add local default
+cat >/etc/local.d/headscale.start <<EOF
+#!/bin/sh
+screen -d -m /usr/local/bin/emitter -c=/root/emitter-storage/emitter.conf
+EOF
+
+chmod u+wrx /etc/local.d/headscale.start
 
 exit

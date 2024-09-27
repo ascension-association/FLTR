@@ -81,7 +81,7 @@ chmod u+wrx /etc/local.d/tailscale.start
 # run Tailscale
 rc-update add tailscale
 rc-service tailscale start
-tailscale up --advertise-exit-node --login-server=https://${HUB_DOMAIN_NAME}:443 --authkey ${TAILSCALE_AUTH_KEY}
+tailscale up --advertise-exit-node --login-server=https://${HUB_DOMAIN_NAME}:8443 --authkey ${TAILSCALE_AUTH_KEY}
 exit
 
 # install Blocky, including SafeSurfer.io upstream DNS servers
