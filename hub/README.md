@@ -17,4 +17,5 @@ Centralized instance for managing the FLTR nodes, aggregating logs, and communic
 3. Download the `fltr-hub-setup.bash` and `fltr-hub-setup.conf.template` files
 4. Rename the `fltr-hub-setup.conf.template` file to `fltr-hub-setup.conf` and edit with your values
 5. Run `bash fltr-hub-setup.bash`
-6. Verify Headscale is running by browsing to https://YOUR-DOMAIN-HERE:8443/windows
+6. Verify Emitter is running by browsing to https://YOUR-DOMAIN-HERE/keygen
+7. Verify Headscale is running by browsing to https://YOUR-DOMAIN-HERE:8443/windows

@@ -91,30 +91,11 @@ if [ ! -f /usr/local/bin/endwall ]; then
   /usr/local/bin/endwall
 fi
 
-# install Headscale
-apk add headscale --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
-echo '{"acls":[{"action":"accept","src":["*"],"dst":["*:*"]}]}' >/etc/headscale/acl.hujson
-chmod 644 /etc/headscale/acl.hujson
-sed -i "s/^server_url.*$/server_url: https:\/\/${DOMAIN_NAME}:8443/" /etc/headscale/config.yaml
-sed -i "s/^listen_addr.*$/listen_addr: 0.0.0.0:8443/" /etc/headscale/config.yaml
-sed -i "s/^acme_email.*$/acme_email: \"${ACME_EMAIL}\"/" /etc/headscale/config.yaml
-sed -i "s/^tls_letsencrypt_hostname.*$/tls_letsencrypt_hostname: \"${DOMAIN_NAME}\"/" /etc/headscale/config.yaml
-sed -i "s/^acl_policy_path.*$/acl_policy_path: \"\/etc\/headscale\/acl.hujson\"/" /etc/headscale/config.yaml
-sed -i "s/base_domain: example\.com/base_domain: ${DOMAIN_NAME}/" /etc/headscale/config.yaml
-sed -i "s/magic_dns: true/magic_dns: false/" /etc/headscale/config.yaml
-sed -i "s/override_local_dns: false/override_local_dns: true/" /etc/headscale/config.yaml
-sed -i "s/^    - 1\.1\.1\.1.*$/    - 104.197.28.121/" /etc/headscale/config.yaml
-sed -i "/104\.197\.28\.121/a \    \- 104.155.237.225" /etc/headscale/config.yaml
-sed -i "s/^command_user=.*/command_user=\"root:root\"/" /etc/init.d/headscale
-rc-update add headscale
-rc-service headscale start
-
 # install and configure Emitter
-apk add git go gcc musl-dev
+apk add curl git go gcc musl-dev
 cd /tmp
 git clone https://github.com/emitter-io/emitter
 cd emitter
-sed -i "s/:80/:8080/g" ./internal/broker/service.go
 go get -x .
 go build -x .
 mv emitter /usr/local/bin
@@ -143,6 +124,27 @@ EOF
 
 chmod 600 /root/emitter-storage/emitter.conf
 screen -d -m /usr/local/bin/emitter -c=/root/emitter-storage/emitter.conf
+curl -s -o /dev/null "https://${DOMAIN_NAME}/keygen"
+
+# install Headscale
+apk add headscale --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
+echo '{"acls":[{"action":"accept","src":["*"],"dst":["*:*"]}]}' >/etc/headscale/acl.hujson
+chmod 644 /etc/headscale/acl.hujson
+sed -i "s/^server_url.*$/server_url: https:\/\/${DOMAIN_NAME}:8443/" /etc/headscale/config.yaml
+sed -i "s/^listen_addr.*$/listen_addr: 0.0.0.0:8443/" /etc/headscale/config.yaml
+sed -i "s/^acme_email.*$/acme_email: \"${ACME_EMAIL}\"/" /etc/headscale/config.yaml
+sed -i "s/^tls_letsencrypt_hostname.*$/tls_letsencrypt_hostname: \"${DOMAIN_NAME}\"/" /etc/headscale/config.yaml
+sed -i "s/^tls_letsencrypt_cache_dir.*$/tls_letsencrypt_cache_dir: \/root\/emitter-storage\/certs/" /etc/headscale/config.yaml
+sed -i "s/^tls_letsencrypt_challenge_type.*$/tls_letsencrypt_challenge_type: TLS-ALPN-01/" /etc/headscale/config.yaml
+sed -i "s/^acl_policy_path.*$/acl_policy_path: \"\/etc\/headscale\/acl.hujson\"/" /etc/headscale/config.yaml
+sed -i "s/base_domain: example\.com/base_domain: ${DOMAIN_NAME}/" /etc/headscale/config.yaml
+sed -i "s/magic_dns: true/magic_dns: false/" /etc/headscale/config.yaml
+sed -i "s/override_local_dns: false/override_local_dns: true/" /etc/headscale/config.yaml
+sed -i "s/^    - 1\.1\.1\.1.*$/    - 104.197.28.121/" /etc/headscale/config.yaml
+sed -i "/104\.197\.28\.121/a \    \- 104.155.237.225" /etc/headscale/config.yaml
+sed -i "s/^command_user=.*/command_user=\"root:root\"/" /etc/init.d/headscale
+rc-update add headscale
+rc-service headscale start
 
 # run Emitter at startup
 apk add screen

@@ -88,10 +88,11 @@ exit
 apk add blocky --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
 rm /etc/blocky/config.example.yml
 cat >/etc/blocky/config.yml <<EOF
-upstream:
-  default:
-    - 104.197.28.121
-    - 104.155.237.225
+upstreams:
+  groups:
+    default:
+      - 104.197.28.121
+      - 104.155.237.225
 filtering:
   queryTypes:
     - AAAA
@@ -115,7 +116,7 @@ blocking:
     custom:
       - |
         # inline definition with YAML literal block scalar style
-        example.net
+        baddomain.org
         tor.bravesoftware.com
         odoh.cloudflare-dns.com
         odoh1.surfdomeinen.nl
@@ -137,11 +138,13 @@ blocking:
       - ads
       - security
       - custom
-  blockType: nxDomain
 caching:
   minTime: 5m
 ports:
   dns: 53
+bootstrapDns:
+  - tcp+udp:104.197.28.121
+  - tcp+udp:104.155.237.225
 EOF
 
 # run Blocky
@@ -180,6 +183,7 @@ sed -i "s/disable_default_logs = F/disable_default_logs = T/" /usr/local/zeek/sh
 echo "/usr/local/zeek/bin/zeekctl start" >>/etc/local.d/tailscale.start
 
 # install Vector
+apk add openssl
 apk add librdkafka zlib-ng --repository=https://dl-cdn.alpinelinux.org/alpine/edge/community
 apk add vector --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
 mkdir -p /var/lib/vector
@@ -191,5 +195,13 @@ git clone https://github.com/ascension-association/LogSlash
 cp ./LogSlash/Vector/logslash-zeek_*.toml /etc/vector/
 test -f /etc/vector/vector.yaml && rm /etc/vector/vector.yaml
 
-# TODO: run Vector as service (default apk version doesn't support configuration parameters)
-/usr/bin/vector -C /etc/vector
+# configure Vector
+sed -i 's/type = "console"/type = "mqtt"/' /etc/vector/*.toml
+sed -i "/type = \"mqtt\"/a topic = \"${MQTT_WRITE_STORE_KEY}/db/\"" /etc/vector/*.toml
+sed -i '/type = "mqtt"/a port = 443' /etc/vector/*.toml
+sed -i "/type = \"mqtt\"/a host = \"${HUB_DOMAIN_NAME}\"" /etc/vector/*.toml
+
+# run Vector
+apk add screen
+/usr/bin/screen -d -m /usr/bin/vector -C /etc/vector
+echo "/usr/bin/screen -d -m /usr/bin/vector -C /etc/vector" >>/etc/local.d/tailscale.start
