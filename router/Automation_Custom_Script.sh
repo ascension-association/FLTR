@@ -48,7 +48,7 @@ curl -sLo /usr/lib/systemd/system/nft-blackhole-reload.timer https://raw.githubu
 
 chmod +x /usr/local/bin/nft-blackhole.py
 
-sed -i 's/v6: on/v6: off/' /usr/local/etc/nft-blackhole.yaml
+sed -i 's/BLOCK_OUTPUT: off/BLOCK_OUTPUT: on/' /usr/local/etc/nft-blackhole.yaml
 
 sed -i 's/- 192\.168\.0\.1\/24/- 192.168.0.0\/16/' /usr/local/etc/nft-blackhole.yaml
 sed -i '/- 127.0.0.1/a \    - 10.0.0.0/8' /usr/local/etc/nft-blackhole.yaml
@@ -60,7 +60,7 @@ sed -i '/- 127.0.0.1/a \    - 104.155.237.225' /usr/local/etc/nft-blackhole.yaml
 sed -i 's/https:\/\/iplists\.firehol\.org\/files\/bi_any_0_1d\.ipset/https:\/\/raw.githubusercontent.com\/dibdot\/DoH-IP-blocklists\/master\/doh-ipv4.txt/' /usr/local/etc/nft-blackhole.yaml
 sed -i 's/https:\/\/iplists\.firehol\.org\/files\/haley_ssh\.ipset/https:\/\/raw.githubusercontent.com\/ascension-association\/FLTR\/main\/node\/dufcxgnbjsdwmwctgfuj-iblocklist-pedophiles-mirror.txt/' /usr/local/etc/nft-blackhole.yaml
 sed -i 's/firehol_level2\.netset/firehol_level1.netset/' /usr/local/etc/nft-blackhole.yaml
-#sed -i '/firehol_level1/a \    - https://iplists.firehol.org/files/firehol_anonymous.netset' /usr/local/etc/nft-blackhole.yaml
+sed -i '/firehol_level1/a \    - https://iplists.firehol.org/files/firehol_anonymous.netset' /usr/local/etc/nft-blackhole.yaml
 
 # https://www.bis.doc.gov/index.php/policy-guidance/country-guidance/sanctioned-destinations
 sed -i 's/- cn/- cu/' /usr/local/etc/nft-blackhole.yaml
@@ -86,6 +86,7 @@ filtering:
   queryTypes:
     - AAAA
 blocking:
+  blockType: nxDomain
   denylists:
     adult:
       - https://nsfw.oisd.nl/domainswild
@@ -139,17 +140,23 @@ EOF
 
 systemctl start blocky && systemctl enable blocky
 
+# force local DNS
+apt-get install resolvconf -y
+echo "nameserver 127.0.0.1" >/etc/resolv.conf
+sed -i 's/#prepend\sdomain-name-servers.*/prepend domain-name-servers 127.0.0.1;/' /etc/dhcp/dhclient.conf
+>/etc/resolvconf/resolv.conf.d/head
+>/etc/resolvconf/resolv.conf.d/tail
+
 # enable DHCP starvation
-apt-get install -y screen git cmake zlib1g-dev build-essential
+apt-get install -y screen git cmake build-essential
 cd /tmp
 git clone https://github.com/jacopodl/dstar
 cd dstar
-sed -i '/branch =/d' ./.gitmodules
-git submodule update --init --recursive --remote
+git submodule init && git submodule update
 cmake .
 make
 mv ./bin/dstar /usr/local/bin
-apt-get purge -y --auto-remove cmake zlib1g-dev build-essential
+apt-get purge -y --auto-remove cmake build-essential
 
 cat >/root/dstar.sh <<EOF
 #!/bin/bash
@@ -200,10 +207,3 @@ WantedBy=multi-user.target
 EOF
 
 systemctl start arpspoof && systemctl enable arpspoof
-
-# force local DNS
-apt-get install resolvconf -y
-echo "nameserver 127.0.0.1" >/etc/resolv.conf
-sed -i 's/#prepend\sdomain-name-servers.*/prepend domain-name-servers 127.0.0.1;/' /etc/dhcp/dhclient.conf
->/etc/resolvconf/resolv.conf.d/head
->/etc/resolvconf/resolv.conf.d/tail

@@ -7,7 +7,7 @@ if [ "${EUID}" -ne 0 ]; then
 fi
 
 # load DietPi image on to eMMC/SSD
-apt install -y xz-utils
+apt-get install -y xz-utils
 xz -dc DietPi*.img.xz | dd of=/dev/mmcblk1 status=progress
 
 # mount eMMC/SSD
