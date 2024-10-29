@@ -128,7 +128,7 @@ curl -s -o /dev/null "https://${DOMAIN_NAME}/keygen"
 
 # install Headscale
 apk add headscale --repository=https://dl-cdn.alpinelinux.org/alpine/edge/testing
-echo '{"acls":[{"action":"accept","src":["*"],"dst":["*:*"]}]}' >/etc/headscale/acl.hujson
+echo '{"acls":[{"action":"accept","src":["autogroup:member"],"dst":["autogroup:internet:*"]}]}' >/etc/headscale/acl.hujson
 chmod 644 /etc/headscale/acl.hujson
 sed -i "s/^server_url.*$/server_url: https:\/\/${DOMAIN_NAME}:8443/" /etc/headscale/config.yaml
 sed -i "s/^listen_addr.*$/listen_addr: 0.0.0.0:8443/" /etc/headscale/config.yaml
