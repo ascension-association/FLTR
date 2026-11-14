@@ -2,7 +2,7 @@
 
 Internet Protection for Everyone
 
-FLTR (pronounced "filter") keeps you and your loved ones safe from harmful or unwanted Internet content and helps control screentime usage. Brought to you by [Ascension Association](https://ascension.us.org/), a charitable nonprofit organization dedicated to combating human trafficking, sexual exploitation, and pornography through education, technology, and philanthropy.
+**FLTR** (pronounced "filter") helps keep you and your loved ones safe from harmful or unwanted Internet content and manage screentime usage. Brought to you by [Ascension Association](https://ascension.us.org/), a charitable nonprofit organization dedicated to combating human trafficking, sexual exploitation, and pornography through education, technology, and philanthropy.
 
 Our technology is as open as our mission:
 
